@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Dashboard – Bover Price Monitor{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+{% if not summary %}
+<!-- Empty state -->
+<div class="flex flex-col items-center justify-center py-28 text-center">
+  <div class="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mb-5">
+    <svg class="w-9 h-9 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+  </div>
+  <h2 class="text-xl font-semibold text-slate-700 mb-2">Sin datos todavía</h2>
+  <p class="text-slate-500 mb-7 max-w-sm">Ejecuta el primer análisis para ver los precios publicados en España y Alemania.</p>
+  <a href="/run" class="btn-primary text-base px-8 py-3">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    Lanzar análisis ahora
+  </a>
+</div>
+
+{% else %}
+<!-- KPI cards -->
+<div class="grid grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+  {% set kpis = [
+    ("Productos analizados", summary.total, "text-slate-700", "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"),
+    ("Cumplen política", summary.ok, "text-emerald-600", "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0"),
+    ("Incumplen (> -15%)", summary.fail, "text-red-600", "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"),
+    ("Tasa de cumplimiento", (summary.compliance_rate | string + "%" if summary.compliance_rate else "—"), "text-sky-600", "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"),
+  ] %}
+  {% for label, value, color, icon in kpis %}
+  <div class="card flex items-center gap-4">
+    <div class="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center flex-shrink-0">
+      <svg class="w-6 h-6 {{ color }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ icon }}"/></svg>
+    </div>
+    <div>
+      <div class="text-2xl font-bold {{ color }}">{{ value }}</div>
+      <div class="text-xs text-slate-500 mt-0.5">{{ label }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Compliance bar -->
+{% if summary.compliance_rate %}
+<div class="card mb-8">
+  <div class="flex items-center justify-between mb-3">
+    <span class="text-sm font-semibold text-slate-700">Cumplimiento global de precios</span>
+    <span class="text-sm font-bold {% if summary.compliance_rate >= 90 %}text-emerald-600{% elif summary.compliance_rate >= 70 %}text-amber-600{% else %}text-red-600{% endif %}">
+      {{ summary.compliance_rate }}%
+    </span>
+  </div>
+  <div class="h-3 bg-slate-100 rounded-full overflow-hidden">
+    <div class="h-full rounded-full transition-all duration-500
+      {% if summary.compliance_rate >= 90 %}bg-emerald-500{% elif summary.compliance_rate >= 70 %}bg-amber-400{% else %}bg-red-500{% endif %}"
+      style="width: {{ summary.compliance_rate }}%"></div>
+  </div>
+  <div class="flex justify-between text-xs text-slate-400 mt-2">
+    <span>0%</span><span>50%</span><span>100%</span>
+  </div>
+</div>
+{% endif %}
+
+<!-- Retailers table -->
+<div class="card">
+  <div class="flex items-center justify-between mb-5">
+    <h2 class="font-semibold text-slate-900">Estado por retailer</h2>
+    <div class="flex gap-2">
+      <a href="/violations" class="btn-ghost text-xs">Ver incumplimientos</a>
+      <a id="dl-xlsx" href="#" class="btn-ghost text-xs">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Descargar Excel
+      </a>
+    </div>
+  </div>
+
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="border-b border-slate-200">
+        <th class="text-left py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Retailer</th>
+        <th class="text-left py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">País</th>
+        <th class="text-right py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Total</th>
+        <th class="text-right py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">✅ OK</th>
+        <th class="text-right py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">❌ Incumple</th>
+        <th class="text-right py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Desc. máx.</th>
+        <th class="text-center py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in summary.retailers %}
+      <tr class="tbl-row">
+        <td class="py-3 px-3 font-medium text-slate-800">{{ r.retailer }}</td>
+        <td class="py-3 px-3 text-slate-500">
+          {% if r.country == "ES" %}🇪🇸 España{% else %}🇩🇪 Alemania{% endif %}
+        </td>
+        <td class="py-3 px-3 text-right text-slate-700">{{ r.total }}</td>
+        <td class="py-3 px-3 text-right text-emerald-600 font-medium">{{ r.ok }}</td>
+        <td class="py-3 px-3 text-right">
+          {% if r.fail > 0 %}
+            <span class="font-bold text-red-600">{{ r.fail }}</span>
+          {% else %}
+            <span class="text-emerald-600">0</span>
+          {% endif %}
+        </td>
+        <td class="py-3 px-3 text-right">
+          {% if r.max_disc > 0 %}
+            <span class="{% if r.max_disc > 15 %}text-red-600 font-semibold{% else %}text-slate-600{% endif %}">
+              -{{ "%.1f"|format(r.max_disc) }}%
+            </span>
+          {% else %}
+            <span class="text-slate-400">—</span>
+          {% endif %}
+        </td>
+        <td class="py-3 px-3 text-center">
+          {% if r.fail == 0 %}
+            <span class="badge-ok">✓ OK</span>
+          {% else %}
+            <a href="/violations?retailer={{ r.retailer }}" class="badge-fail hover:opacity-80 transition-opacity cursor-pointer">
+              ⚠ Ver
+            </a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  fetch('/api/reports')
+    .then(r => r.json())
+    .then(files => {
+      const xlsx = files.find(f => f.ext === 'xlsx');
+      if (xlsx) document.getElementById('dl-xlsx').href = '/download/' + xlsx.name;
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}Bover Price Monitor{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { DEFAULT: '#1a1a2e', light: '#16213e', accent: '#e94560', soft: '#0f3460' }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .nav-link { @apply flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150; }
+    .nav-link:hover { @apply bg-white/10 text-white; }
+    .nav-link.active { @apply bg-white/15 text-white; }
+    .nav-link:not(.active) { @apply text-slate-300; }
+    .card { @apply bg-white rounded-2xl shadow-sm border border-slate-100 p-6; }
+    .badge-ok      { @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700; }
+    .badge-fail    { @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700; }
+    .badge-unknown { @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-500; }
+    .btn-primary { @apply inline-flex items-center gap-2 px-5 py-2.5 bg-brand-accent text-white text-sm font-semibold rounded-xl hover:bg-red-600 transition-colors; }
+    .btn-ghost   { @apply inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors; }
+    .tbl-row     { @apply border-b border-slate-50 hover:bg-slate-50/70 transition-colors; }
+    .flag-es:before { content: "🇪🇸"; margin-right: 4px; }
+    .flag-de:before { content: "🇩🇪"; margin-right: 4px; }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body class="bg-slate-50 min-h-full flex">
+
+  <!-- Sidebar -->
+  <aside class="w-60 min-h-screen flex-shrink-0 bg-brand flex flex-col fixed left-0 top-0 bottom-0 z-30">
+    <div class="px-5 py-6 border-b border-white/10">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-brand-accent flex items-center justify-center text-white font-bold text-lg">B</div>
+        <div>
+          <div class="text-white font-semibold text-sm leading-tight">Bover</div>
+          <div class="text-slate-400 text-xs">Price Monitor</div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="flex-1 px-3 py-4 space-y-1">
+      <a href="/" class="nav-link {% if request.url.path == '/' %}active{% endif %}">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        Dashboard
+      </a>
+      <a href="/violations" class="nav-link {% if '/violations' in request.url.path %}active{% endif %}">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        Incumplimientos
+      </a>
+      <a href="/products" class="nav-link {% if '/products' in request.url.path %}active{% endif %}">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        Todos los productos
+      </a>
+      <a href="/run" class="nav-link {% if '/run' in request.url.path %}active{% endif %}">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Ejecutar scraping
+      </a>
+      <a href="/prices" class="nav-link {% if '/prices' in request.url.path %}active{% endif %}">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-5 5a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 10V5a2 2 0 012-2z"/></svg>
+        Precios oficiales
+      </a>
+    </nav>
+
+    <div class="px-3 pb-5">
+      <div class="rounded-xl bg-white/5 p-3 text-xs text-slate-400 text-center">
+        Descuento máximo permitido<br/>
+        <span class="text-white font-bold text-xl">15%</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="ml-60 flex-1 flex flex-col min-h-screen">
+    <!-- Top bar -->
+    <header class="sticky top-0 z-20 bg-white/80 backdrop-blur border-b border-slate-100 px-8 py-4 flex items-center justify-between">
+      <div>
+        <h1 class="text-lg font-semibold text-slate-900">{% block page_title %}Dashboard{% endblock %}</h1>
+        {% if scraped_at is defined and scraped_at %}
+        <p class="text-xs text-slate-400 mt-0.5">Último análisis: {{ scraped_at }}</p>
+        {% endif %}
+      </div>
+      <a href="/run" class="btn-primary">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        Nuevo análisis
+      </a>
+    </header>
+
+    <div class="flex-1 px-8 py-7">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Todos los productos – Bover Price Monitor{% endblock %}
+{% block page_title %}Todos los productos{% endblock %}
+
+{% block content %}
+<!-- Filters -->
+<form method="get" class="card mb-6 flex flex-wrap gap-3 items-end">
+  <div class="flex-1 min-w-48">
+    <label class="block text-xs font-medium text-slate-500 mb-1">Buscar</label>
+    <input type="text" name="q" value="{{ filter_q }}" placeholder="Nombre de producto…"
+      class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30"/>
+  </div>
+  <div class="min-w-44">
+    <label class="block text-xs font-medium text-slate-500 mb-1">Retailer</label>
+    <select name="retailer" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-accent/30">
+      <option value="">Todos</option>
+      {% for r in retailers %}<option value="{{ r }}" {% if r == filter_retailer %}selected{% endif %}>{{ r }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="min-w-36">
+    <label class="block text-xs font-medium text-slate-500 mb-1">País</label>
+    <select name="country" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-accent/30">
+      <option value="">Todos</option>
+      <option value="ES" {% if filter_country=='ES' %}selected{% endif %}>🇪🇸 España</option>
+      <option value="DE" {% if filter_country=='DE' %}selected{% endif %}>🇩🇪 Alemania</option>
+    </select>
+  </div>
+  <div class="min-w-40">
+    <label class="block text-xs font-medium text-slate-500 mb-1">Cumplimiento</label>
+    <select name="compliant" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-accent/30">
+      <option value="">Todos</option>
+      <option value="yes" {% if filter_compliant=='yes' %}selected{% endif %}>✅ Cumple</option>
+      <option value="no" {% if filter_compliant=='no' %}selected{% endif %}>❌ Incumple</option>
+      <option value="unknown" {% if filter_compliant=='unknown' %}selected{% endif %}>❓ Sin PVP</option>
+    </select>
+  </div>
+  <button type="submit" class="btn-primary">Filtrar</button>
+  {% if filter_q or filter_retailer or filter_country or filter_compliant %}
+  <a href="/products" class="btn-ghost">Limpiar</a>
+  {% endif %}
+</form>
+
+<div class="flex items-center justify-between mb-4">
+  <p class="text-sm text-slate-500"><span class="font-semibold text-slate-800">{{ total }}</span> resultados</p>
+  <div class="text-xs text-slate-400">Página {{ page }} de {{ total_pages }}</div>
+</div>
+
+<div class="card overflow-hidden p-0">
+  <table class="w-full text-sm">
+    <thead class="bg-slate-50 border-b border-slate-200">
+      <tr>
+        <th class="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wide w-8"></th>
+        <th class="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Retailer</th>
+        <th class="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Producto</th>
+        <th class="text-right py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Precio</th>
+        <th class="text-right py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">PVP oficial</th>
+        <th class="text-right py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Desc.</th>
+        <th class="text-center py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Estado</th>
+        <th class="py-3 px-4"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in products %}
+      <tr class="tbl-row">
+        <td class="py-2.5 px-4 text-base">
+          {% if p.country == "ES" %}🇪🇸{% else %}🇩🇪{% endif %}
+        </td>
+        <td class="py-2.5 px-4 text-slate-600">{{ p.retailer }}</td>
+        <td class="py-2.5 px-4 text-slate-800 max-w-xs" title="{{ p.product_name }}">
+          <span class="truncate block max-w-xs">{{ p.product_name }}</span>
+        </td>
+        <td class="py-2.5 px-4 text-right font-semibold text-slate-800">€{{ "%.2f"|format(p.price) }}</td>
+        <td class="py-2.5 px-4 text-right text-slate-500">
+          {% if p.official_price %}€{{ "%.2f"|format(p.official_price) }}{% else %}<span class="text-slate-300">—</span>{% endif %}
+        </td>
+        <td class="py-2.5 px-4 text-right text-sm">
+          {% if p.discount_pct is not none %}
+            {% set d = p.discount_pct | float %}
+            <span class="{% if d > 15 %}text-red-600 font-semibold{% elif d > 0 %}text-slate-500{% else %}text-emerald-600{% endif %}">
+              {% if d > 0 %}−{{ "%.1f"|format(d) }}%{% elif d < 0 %}+{{ "%.1f"|format(-d) }}%{% else %}0%{% endif %}
+            </span>
+          {% else %}
+            <span class="text-slate-300">—</span>
+          {% endif %}
+        </td>
+        <td class="py-2.5 px-4 text-center">
+          {% if p.compliant is sameas true %}
+            <span class="badge-ok">OK</span>
+          {% elif p.compliant is sameas false %}
+            <span class="badge-fail">⚠ Falla</span>
+          {% else %}
+            <span class="badge-unknown">Sin PVP</span>
+          {% endif %}
+        </td>
+        <td class="py-2.5 px-4 text-right">
+          <a href="{{ p.url }}" target="_blank" rel="noopener" class="text-slate-400 hover:text-sky-600 transition-colors">
+            <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+      {% if not products %}
+      <tr><td colspan="8" class="py-16 text-center text-slate-400">Sin resultados para estos filtros.</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div class="mt-5 flex items-center justify-center gap-2">
+  {% if page > 1 %}
+  <a href="?page={{ page-1 }}&country={{ filter_country }}&retailer={{ filter_retailer }}&compliant={{ filter_compliant }}&q={{ filter_q }}"
+    class="btn-ghost px-3 py-1.5 text-xs">← Anterior</a>
+  {% endif %}
+  <span class="text-sm text-slate-500">{{ page }} / {{ total_pages }}</span>
+  {% if page < total_pages %}
+  <a href="?page={{ page+1 }}&country={{ filter_country }}&retailer={{ filter_retailer }}&compliant={{ filter_compliant }}&q={{ filter_q }}"
+    class="btn-ghost px-3 py-1.5 text-xs">Siguiente →</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

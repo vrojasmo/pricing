@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}Ejecutar scraping – Bover Price Monitor{% endblock %}
+{% block page_title %}Ejecutar análisis de precios{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+
+  <!-- Config panel -->
+  <div class="xl:col-span-2">
+    <div class="card">
+      <h2 class="font-semibold text-slate-800 mb-5">Configurar análisis</h2>
+
+      <div class="space-y-5">
+        <!-- Country -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">País</label>
+          <div class="grid grid-cols-3 gap-2" id="country-btns">
+            <button type="button" data-val="" onclick="setCountry(this)"
+              class="country-btn active-btn border-2 border-brand-accent bg-brand-accent/5 text-brand-accent rounded-xl py-2.5 text-sm font-medium transition-all">
+              🌍 Todos
+            </button>
+            <button type="button" data-val="ES" onclick="setCountry(this)"
+              class="country-btn border-2 border-slate-200 text-slate-600 rounded-xl py-2.5 text-sm font-medium hover:border-brand-accent/50 transition-all">
+              🇪🇸 España
+            </button>
+            <button type="button" data-val="DE" onclick="setCountry(this)"
+              class="country-btn border-2 border-slate-200 text-slate-600 rounded-xl py-2.5 text-sm font-medium hover:border-brand-accent/50 transition-all">
+              🇩🇪 Alemania
+            </button>
+          </div>
+          <input type="hidden" id="country-val" value=""/>
+        </div>
+
+        <!-- Retailers -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">Retailers <span class="text-slate-400 font-normal">(todos por defecto)</span></label>
+          <div class="space-y-2" id="retailer-checks">
+            {% set retailer_map = [
+              ("LightingSpain","ES"),("MyLightShop","ES"),
+              ("LaTiendaDeIluminacion","ES"),("Lampara.es","ES"),
+              ("Light11","DE"),("GetLight","DE"),
+              ("Prediger","DE"),("Reuter","DE"),
+            ] %}
+            {% for name, country in retailer_map %}
+            <label class="flex items-center gap-3 cursor-pointer group">
+              <input type="checkbox" class="retailer-cb w-4 h-4 accent-brand-accent rounded" value="{{ name }}" checked/>
+              <span class="text-sm text-slate-700 group-hover:text-slate-900">
+                {% if country == "ES" %}🇪🇸{% else %}🇩🇪{% endif %} {{ name }}
+              </span>
+            </label>
+            {% endfor %}
+          </div>
+          <button onclick="toggleAll()" class="mt-2 text-xs text-sky-600 hover:underline">Seleccionar/deseleccionar todos</button>
+        </div>
+
+        <!-- Run button -->
+        <button id="run-btn" onclick="startScrape()"
+          class="w-full btn-primary justify-center py-3 text-base rounded-xl">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Iniciar análisis
+        </button>
+      </div>
+    </div>
+
+    <!-- Download reports -->
+    <div class="card mt-5">
+      <h3 class="font-semibold text-slate-800 mb-4">Últimos informes</h3>
+      <div id="report-list" class="space-y-2 text-sm text-slate-500 italic">Cargando…</div>
+    </div>
+  </div>
+
+  <!-- Log panel -->
+  <div class="xl:col-span-3">
+    <div class="card h-full flex flex-col" style="min-height:480px">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-semibold text-slate-800">Log en tiempo real</h2>
+        <span id="status-badge" class="text-xs px-3 py-1 rounded-full bg-slate-100 text-slate-500 font-medium">En espera</span>
+      </div>
+      <div id="log-box"
+        class="flex-1 bg-slate-900 rounded-xl p-4 font-mono text-xs text-green-400 overflow-y-auto whitespace-pre-wrap leading-relaxed"
+        style="min-height:380px">
+        <span class="text-slate-500">▸ Configura el análisis y pulsa "Iniciar" para comenzar...</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Done modal -->
+<div id="done-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+  <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
+    <div id="modal-icon" class="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+    </div>
+    <h3 class="text-xl font-bold text-slate-900 mb-2">Análisis completado</h3>
+    <p class="text-slate-500 text-sm mb-6">Los resultados están disponibles en el dashboard.</p>
+    <div class="flex gap-3 justify-center">
+      <a href="/" class="btn-primary">Ver dashboard</a>
+      <button onclick="document.getElementById('done-modal').classList.add('hidden')" class="btn-ghost">Cerrar</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let allChecked = true;
+
+function setCountry(btn) {
+  document.querySelectorAll('.country-btn').forEach(b => {
+    b.classList.remove('active-btn','border-brand-accent','bg-brand-accent/5','text-brand-accent');
+    b.classList.add('border-slate-200','text-slate-600');
+  });
+  btn.classList.remove('border-slate-200','text-slate-600');
+  btn.classList.add('active-btn','border-brand-accent','bg-brand-accent/5','text-brand-accent');
+  document.getElementById('country-val').value = btn.dataset.val;
+
+  // filter retailer checkboxes
+  const val = btn.dataset.val;
+  document.querySelectorAll('.retailer-cb').forEach(cb => {
+    const label = cb.closest('label');
+    if (!val) { label.style.display=''; return; }
+    const flag = val === 'ES' ? '🇪🇸' : '🇩🇪';
+    label.style.display = label.textContent.includes(flag) ? '' : 'none';
+  });
+}
+
+function toggleAll() {
+  allChecked = !allChecked;
+  document.querySelectorAll('.retailer-cb').forEach(cb => { cb.checked = allChecked; });
+}
+
+async function startScrape() {
+  const country = document.getElementById('country-val').value;
+  const checked = [...document.querySelectorAll('.retailer-cb:checked')].map(c => c.value);
+  const all     = [...document.querySelectorAll('.retailer-cb')].map(c => c.value);
+  const retailers = (checked.length === all.length) ? '' : checked.join(',');
+
+  const log = document.getElementById('log-box');
+  const badge = document.getElementById('status-badge');
+  const btn = document.getElementById('run-btn');
+
+  log.textContent = '';
+  btn.disabled = true;
+  btn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg> Analizando…';
+  badge.textContent = 'Ejecutando';
+  badge.className = 'text-xs px-3 py-1 rounded-full bg-amber-100 text-amber-700 font-medium';
+
+  const form = new FormData();
+  form.append('country', country);
+  form.append('retailers', retailers);
+
+  const resp = await fetch('/api/run', { method:'POST', body: form });
+  const { job_id } = await resp.json();
+
+  const es = new EventSource(`/api/job/${job_id}/stream`);
+  es.onmessage = (e) => {
+    const line = JSON.parse(e.data);
+    if (line === '__DONE__') {
+      es.close();
+      checkJobResult(job_id);
+      return;
+    }
+    // strip ANSI colour codes for display
+    const clean = line.replace(/\x1b\[[0-9;]*m/g, '');
+    log.textContent += clean + '\n';
+    log.scrollTop = log.scrollHeight;
+  };
+}
+
+async function checkJobResult(job_id) {
+  const job = await fetch(`/api/job/${job_id}`).then(r => r.json());
+  const badge = document.getElementById('status-badge');
+  const btn   = document.getElementById('run-btn');
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Iniciar análisis';
+
+  if (job.status === 'done') {
+    badge.textContent = '✓ Completado';
+    badge.className = 'text-xs px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 font-medium';
+    document.getElementById('done-modal').classList.remove('hidden');
+    loadReports();
+  } else {
+    badge.textContent = '✗ Error';
+    badge.className = 'text-xs px-3 py-1 rounded-full bg-red-100 text-red-700 font-medium';
+  }
+}
+
+async function loadReports() {
+  const reports = await fetch('/api/reports').then(r => r.json());
+  const container = document.getElementById('report-list');
+  if (!reports.length) { container.textContent = 'Sin informes generados aún.'; return; }
+
+  const icons = { xlsx: '📊', csv: '📄', json: '🗂' };
+  container.innerHTML = reports.slice(0,6).map(f => `
+    <a href="/download/${f.name}" class="flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-50 group not-italic">
+      <span class="flex items-center gap-2 text-slate-700">
+        <span>${icons[f.ext] || '📁'}</span>
+        <span class="text-xs truncate max-w-48">${f.name}</span>
+      </span>
+      <span class="text-xs text-slate-400 shrink-0 ml-2">${f.size_kb} KB</span>
+    </a>
+  `).join('');
+}
+
+loadReports();
+</script>
+{% endblock %}
